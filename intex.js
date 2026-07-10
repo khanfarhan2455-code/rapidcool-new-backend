@@ -13,9 +13,11 @@ const app = express();
 // 1. CORS CONFIGURATION (Vercel Frontend ke liye)
 // ==========================================
 app.use(cors({
-  // Apne asli Vercel URL se isko replace karein, ya '*' lagayein agar sab allow karna hai
-  origin: ['https://your-frontend-vercel-url.vercel.app', 'http://localhost:3000'], 
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: [
+    'https://khan-git-main-rapidcoolservices.vercel.app', // <-- Aapka asli live frontend URL yahan aagaya
+    'http://localhost:3000'                                // Local testing ke liye
+  ], 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],     // PATCH bhi jod diya kyunki aapke frontend code mein PATCH use ho raha hai
   credentials: true
 }));
 
