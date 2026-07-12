@@ -75,8 +75,8 @@ app.post('/api/admin/login', async (req, res) => {
     const { username, password } = req.body;
     
     // Yahan aap apna env se credentials match kar sakte hain
-    const ADMIN_USER = process.env.ADMIN_USERNAME || 'admin';
-    const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'admin123';
+    const ADMIN_USER = process.env.ADMIN_USERNAME || 'farhan';
+    const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'rapidcool2026';
 
     if (username === ADMIN_USER && password === ADMIN_PASS) {
       return res.status(200).json({
