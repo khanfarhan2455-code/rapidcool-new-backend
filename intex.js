@@ -14,7 +14,7 @@ const app = express();
 // ==========================================
 app.use(cors({
   origin: [
-    'https://khan-git-main-rapidcoolservices.vercel.app', // <-- Aapka asli live frontend URL yahan aagaya
+    'https://khan-git-main-https://rapidcoolservices.online/', // <-- Aapka asli live frontend URL yahan aagaya
     'http://localhost:3000'                                // Local testing ke liye
   ], 
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],     // PATCH bhi jod diya kyunki aapke frontend code mein PATCH use ho raha hai
