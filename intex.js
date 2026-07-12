@@ -58,7 +58,7 @@ if (process.env.GOOGLE_CLIENT_EMAIL && privateKey) {
 }
 
 // ==========================================
-// 4. ACTUAL ROUTES (Jo missing the)
+// 4. ACTUAL ROUTES
 // ==========================================
 
 // Health check / Root Route
@@ -74,24 +74,28 @@ app.post('/api/admin/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     
-    // Yahan aap apna env se credentials match kar sakte hain
+    // Environment variables se credentials fetch karna aur default backup values rakhna
     const ADMIN_USER = process.env.ADMIN_USERNAME || 'farhan';
     const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'rapidcool2026';
 
-    if (username === farhan && password === rapidcool2026) {
+    // FIX: Yahan ab dynamic variables sahi tarike se match ho rahe hain
+    if (username === ADMIN_USER && password === ADMIN_PASS) {
+      
+      // FIX: Frontend dashboard ke pure logic ke mutabik correct token aur success key return karna
       return res.status(200).json({
-        status: "success",
+        success: true, 
         message: "Authentication successful",
-        token: "dummy-admin-token-rapidcool" // Frontend localstorage me save karega
+        token: "rapid_cool_verified_session_token_2026" 
       });
     } else {
+      // FIX: Frontend validation error handler ke liye clear custom response message
       return res.status(401).json({
-        status: "error",
-        message: "Invalid username or password"
+        success: false,
+        error: "Incorrect admin credentials."
       });
     }
   } catch (error) {
-    res.status(500).json({ status: "error", message: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -99,15 +103,15 @@ app.post('/api/admin/login', async (req, res) => {
 app.get('/api/bookings', async (req, res) => {
   try {
     // Agar aapke paas Booking model hai toh: const bookings = await Booking.find();
-    res.status(200).json({ status: "success", bookings: [] });
+    res.status(200).json({ success: true, bookings: [] });
   } catch (error) {
-    res.status(500).json({ status: "error", message: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // Unhandled Route Handler (Agar koi galat URL hit kare)
 app.use((req, res) => {
-  res.status(404).json({ status: "error", message: "Route not found" });
+  res.status(404).json({ success: false, error: "Route not found" });
 });
 
 // ==========================================
