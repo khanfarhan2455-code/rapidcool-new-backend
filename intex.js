@@ -78,7 +78,7 @@ app.post('/api/admin/login', async (req, res) => {
     const ADMIN_USER = process.env.ADMIN_USERNAME || 'farhan';
     const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'rapidcool2026';
 
-    if (username === ADMIN_USER && password === ADMIN_PASS) {
+    if (username === farhan && password === rapidcool2026) {
       return res.status(200).json({
         status: "success",
         message: "Authentication successful",
