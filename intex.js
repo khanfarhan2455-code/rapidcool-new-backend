@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import axios from 'axios'; // <-- Google Sheet Web App hit karne ke liye axios add kiya
+import axios from 'axios'; 
 
 dotenv.config();
 
@@ -32,7 +32,7 @@ if (MONGODB_URI) {
     .catch((err) => console.error('MongoDB connection error:', err));
 }
 
-// Booking Schema & Model (Database me save karne ke liye)
+// Booking Schema & Model
 const bookingSchema = new mongoose.Schema({
   name: String,
   email: String,
@@ -51,10 +51,10 @@ const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSche
 
 // Health check
 app.get('/', (req, res) => {
-  res.status(200).json({ status: "success", message: "RapidCool Backend is running!" });
+  res.status(200).json({ success: true, message: "RapidCool Backend is running!" });
 });
 
-// Admin Login
+// Admin Login (FIXED for Frontend Compatibility)
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -62,16 +62,23 @@ app.post('/api/admin/login', async (req, res) => {
     const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'rapidcool2026';
 
     if (username === ADMIN_USER && password === ADMIN_PASS) {
-      return res.status(200).json({ status: "success", token: "dummy-admin-token-rapidcool" });
+      // FIX: Frontend isi token aur success key ko verify karta hai
+      return res.status(200).json({ 
+        success: true, 
+        token: "rapid_cool_verified_session_token_2026" 
+      });
     } else {
-      return res.status(401).json({ status: "error", message: "Invalid username or password" });
+      return res.status(401).json({ 
+        success: false, 
+        error: "Incorrect admin credentials." 
+      });
     }
   } catch (error) {
-    res.status(500).json({ status: "error", message: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// 📥 NEW BOOKING ROUTE: Jo Data MongoDB aur Google Sheet dono me bhejega
+// 📥 NEW BOOKING ROUTE (Submits to MongoDB & Web App Script)
 app.post('/api/bookings', async (req, res) => {
   try {
     const { name, email, phone, service, date, time, address } = req.body;
@@ -83,7 +90,6 @@ app.post('/api/bookings', async (req, res) => {
     // 2. Google Sheet Web App URL par data bhejein
     const sheetUrl = process.env.GOOGLE_SHEET_WEBAPP_URL;
     if (sheetUrl) {
-      // Background me sheet par data send karein bina response ko delay kiye
       axios.post(sheetUrl, { name, email, phone, service, date, time, address }, {
         headers: { 'Content-Type': 'application/json' }
       }).catch(err => console.error("Google Sheet Sync Error:", err.message));
@@ -92,29 +98,48 @@ app.post('/api/bookings', async (req, res) => {
     }
 
     res.status(201).json({
-      status: "success",
-      message: "Booking successfully created and synced to Google Sheet!",
+      success: true,
+      message: "Booking successfully created and synced!",
       booking: newBooking
     });
 
   } catch (error) {
-    res.status(500).json({ status: "error", message: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Get All Bookings (Admin Panel ke liye)
+// 📤 GET ALL BOOKINGS (FIXED: Dashboard par data fetch hone lagega)
 app.get('/api/bookings', async (req, res) => {
   try {
     const bookings = await Booking.find().sort({ createdAt: -1 });
-    res.status(200).json({ status: "success", bookings });
+    // FIX: Front-end pure logic ke mutabik success: true bhejna mandatory hai
+    res.status(200).json({ 
+      success: true, 
+      bookings: bookings 
+    });
   } catch (error) {
-    res.status(500).json({ status: "error", message: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-app.use((req, res) => {
-  res.status(404).json({ status: "error", message: "Route not found" });
+// 📁 EXPORT BOOKINGS ROUTE (Bypass missing route error)
+app.get('/api/bookings/export', async (req, res) => {
+  try {
+    const bookings = await Booking.find().sort({ createdAt: -1 });
+    res.status(200).json({ 
+      success: true, 
+      bookings: bookings 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
+// Global 404 handler
+app.use((req, res) => {
+  res.status(404).json({ success: false, error: "Route not found" });
+});
+
+// Dynamic Port Binding
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
