@@ -10,14 +10,14 @@ dotenv.config();
 const app = express();
 
 // ==========================================
-// 1. CORS CONFIGURATION (Vercel Frontend ke liye)
+// 1. CORS CONFIGURATION (Fixed URL)
 // ==========================================
 app.use(cors({
   origin: [
-    'https://khan-git-main-https://rapidcoolservices.online/', // <-- Aapka asli live frontend URL yahan aagaya
-    'http://localhost:3000'                                // Local testing ke liye
+    'https://rapidcoolservices.online',                // <-- Aapka asli live frontend URL (Fix)
+    'http://localhost:3000'                             // Local testing ke liye
   ], 
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],     // PATCH bhi jod diya kyunki aapke frontend code mein PATCH use ho raha hai
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true
 }));
 
@@ -31,7 +31,6 @@ const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) {
   console.error("CRITICAL ERROR: MONGODB_URI is not defined in env variables!");
 } else {
-  // Mongoose v6+ me ab useNewUrlParser aur useUnifiedTopology ki zaroorat nahi hoti
   mongoose.connect(MONGODB_URI)
     .then(() => console.log('Successfully connected to MongoDB Atlas.'))
     .catch((err) => console.error('MongoDB connection error:', err));
@@ -44,6 +43,7 @@ const privateKey = process.env.GOOGLE_PRIVATE_KEY
   ? process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n') 
   : null;
 
+let sheets;
 if (process.env.GOOGLE_CLIENT_EMAIL && privateKey) {
   const auth = new google.auth.JWT(
     process.env.GOOGLE_CLIENT_EMAIL,
@@ -51,13 +51,14 @@ if (process.env.GOOGLE_CLIENT_EMAIL && privateKey) {
     privateKey,
     ['https://www.googleapis.com/auth/spreadsheets']
   );
+  sheets = google.sheets({ version: 'v4', auth });
   console.log("Google Sheets Auth initialized successfully.");
 } else {
   console.warn("WARNING: Google Credentials missing in environment variables.");
 }
 
 // ==========================================
-// 4. ROUTES
+// 4. ACTUAL ROUTES (Jo missing the)
 // ==========================================
 
 // Health check / Root Route
@@ -66,6 +67,42 @@ app.get('/', (req, res) => {
     status: "success",
     message: "RapidCool Services Backend is live and running on Render!"
   });
+});
+
+// Admin Login Route (Frontend isi ko hit karta hai)
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    // Yahan aap apna env se credentials match kar sakte hain
+    const ADMIN_USER = process.env.ADMIN_USERNAME || 'admin';
+    const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'admin123';
+
+    if (username === ADMIN_USER && password === ADMIN_PASS) {
+      return res.status(200).json({
+        status: "success",
+        message: "Authentication successful",
+        token: "dummy-admin-token-rapidcool" // Frontend localstorage me save karega
+      });
+    } else {
+      return res.status(401).json({
+        status: "error",
+        message: "Invalid username or password"
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+});
+
+// Bookings Route (Sample handle)
+app.get('/api/bookings', async (req, res) => {
+  try {
+    // Agar aapke paas Booking model hai toh: const bookings = await Booking.find();
+    res.status(200).json({ status: "success", bookings: [] });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
 });
 
 // Unhandled Route Handler (Agar koi galat URL hit kare)
