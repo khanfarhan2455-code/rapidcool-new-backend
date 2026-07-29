@@ -78,55 +78,189 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 // 📥 NEW BOOKING ROUTE (Submits to Google Sheet & Backup MongoDB)
-app.post('/api/bookings', async (req, res) => {
+app.post("/api/bookings", async (req, res) => {
   try {
-    const { name, email, phone, service, date, time, address } = req.body;
+    const {
+      name,
+      email,
+      phone,
+      service,
+      date,
+      time,
+      address,
+      area,
+      suburb,
+    } = req.body;
 
-    // 1. Google Sheet Web App URL par data bhejein (Primary Data Store)
-    const sheetUrl = process.env.GOOGLE_SHEET_WEBAPP_URL;
-    if (sheetUrl) {
-      await axios.post(sheetUrl, { name, email, phone, service, date, time, address }, {
-        headers: { 'Content-Type': 'application/json' }
+    const cleanedPhone = String(phone || "").replace(/\D/g, "");
+
+    if (!name || !service || !address) {
+      return res.status(400).json({
+        success: false,
+        error: "Name, service and address are required.",
       });
-    } else {
-      console.warn("Warning: GOOGLE_SHEET_WEBAPP_URL is not set.");
     }
 
-    // 2. Backup के लिए MongoDB में भी सेव करने का प्रयास करें (अगर कनेक्टेड हो)
-    try {
-      const newBooking = new Booking({ name, email, phone, service, date, time, address });
-      await newBooking.save();
-    } catch (dbErr) {
-      console.error("MongoDB backup failed, but sheet synced:", dbErr.message);
+    if (!/^\d{10}$/.test(cleanedPhone)) {
+      return res.status(400).json({
+        success: false,
+        error: "Please enter a valid 10-digit mobile number.",
+      });
     }
 
-    res.status(201).json({
-      success: true,
-      message: "Booking successfully created and synced with Google Sheets!"
+    const bookingId = `RC-${Math.floor(
+      100000 + Math.random() * 900000
+    )}-MUM`;
+
+    const createdAt = new Date();
+
+    const sheetPayload = {
+      action: "addBooking",
+      id: bookingId,
+
+      date: createdAt.toLocaleDateString("en-IN"),
+      time:
+        time ||
+        createdAt.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        }),
+
+      customerName: String(name).trim(),
+      mobileNumber: cleanedPhone,
+      customerEmail: String(email || "").trim(),
+
+      applianceType: service,
+      serviceRequired: service,
+
+      area: area || suburb || "N/A",
+      address: String(address).trim(),
+
+      preferredDate: date || "N/A",
+      status: "New",
+    };
+
+    const sheetUrl = process.env.GOOGLE_SHEET_WEBAPP_URL;
+
+    if (!sheetUrl) {
+      return res.status(500).json({
+        success: false,
+        error: "Google Sheet URL is not configured.",
+      });
+    }
+
+    const sheetResponse = await axios.post(sheetUrl, sheetPayload, {
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
 
+    if (!sheetResponse.data?.success) {
+      throw new Error(
+        sheetResponse.data?.error || "Google Sheets rejected the booking"
+      );
+    }
+
+    // Optional MongoDB backup
+    try {
+      const newBooking = new Booking({
+        name: sheetPayload.customerName,
+        email: sheetPayload.customerEmail,
+        phone: sheetPayload.mobileNumber,
+        service: sheetPayload.applianceType,
+        date: sheetPayload.preferredDate,
+        time: sheetPayload.time,
+        address: sheetPayload.address,
+      });
+
+      await newBooking.save();
+    } catch (databaseError) {
+      console.error(
+        "MongoDB backup failed:",
+        databaseError instanceof Error
+          ? databaseError.message
+          : databaseError
+      );
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Booking created successfully.",
+      bookingId,
+      booking: sheetPayload,
+    });
   } catch (error) {
-    res.status(500).json({ success: false, error: "Failed to create booking: " + error.message });
+    console.error("Booking creation failed:", error);
+
+    return res.status(500).json({
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to create booking.",
+    });
   }
 });
 
 // 📤 GET ALL BOOKINGS (Fetches data straight from Google Sheets)
-app.get('/api/bookings', async (req, res) => {
+app.get("/api/bookings", async (req, res) => {
   try {
     const sheetUrl = process.env.GOOGLE_SHEET_WEBAPP_URL;
+
     if (!sheetUrl) {
-      return res.status(500).json({ success: false, error: "Google Sheet URL not configured." });
+      return res.status(500).json({
+        success: false,
+        error: "Google Sheet URL not configured.",
+      });
     }
 
-    // Google Apps Script Web App से पूरा डेटा लाएं
     const response = await axios.get(sheetUrl);
-    
-    res.status(200).json({ 
-      success: true, 
-      bookings: response.data || [] // Dashboard को डेटा इसी फॉर्मेट में चाहिए
+
+    const rows = Array.isArray(response.data?.data)
+      ? response.data.data
+      : [];
+
+    const dataRows = rows.filter((row) => {
+      if (!Array.isArray(row)) return false;
+
+      const firstCell = String(row[0] || "").trim().toLowerCase();
+
+      return (
+        firstCell !== "id" &&
+        firstCell !== "booking id" &&
+        row.some((cell) => String(cell || "").trim() !== "")
+      );
+    });
+
+    const bookings = dataRows.map((row) => ({
+      id: String(row[0] || ""),
+      date: String(row[1] || ""),
+      time: String(row[2] || ""),
+      customerName: String(row[3] || ""),
+      mobileNumber: String(row[4] || "").replace(/^'/, ""),
+      customerEmail: String(row[5] || ""),
+      applianceType: String(row[6] || ""),
+      serviceRequired: String(row[7] || ""),
+      area: String(row[8] || ""),
+      address: String(row[9] || ""),
+      preferredDate: String(row[10] || ""),
+      status: String(row[11] || "New"),
+      visitingFee: 299,
+      express: false,
+      warranty: false,
+      additionalNotes: "",
+    }));
+
+    return res.status(200).json({
+      success: true,
+      bookings,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: "Sheets fetch error: " + error.message });
+    return res.status(500).json({
+      success: false,
+      error: `Sheets fetch error: ${error.message}`,
+    });
   }
 });
 
