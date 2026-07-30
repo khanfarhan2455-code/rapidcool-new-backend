@@ -325,7 +325,7 @@ app.delete('/api/bookings/', async (req, res) => {
   try {
     const {id} = req.body
 
-    if (!id || !status) {
+    if (!id) {
       return res.status(400).json({
         success: false,
         error: "Booking ID is required.",
@@ -368,7 +368,7 @@ app.delete('/api/bookings/', async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ 
-      success: false, error: `Failed to delete booking [id: ${id}]. Error: ${error.message }`
+      success: false, error: `Failed to delete booking. Error: ${error.message }`
     }
     );
   }
