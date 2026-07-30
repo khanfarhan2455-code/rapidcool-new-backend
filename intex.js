@@ -264,6 +264,117 @@ app.get("/api/bookings", async (req, res) => {
   }
 });
 
+// UPDATE BOOKINGS ROUTE (Updates booking status for a given id.)
+app.patch('/api/bookings/', async (req, res) => {
+  try {
+    const {id, status} = req.body
+
+    if (!id || !status) {
+      return res.status(400).json({
+        success: false,
+        error: "Booking ID and status are required.",
+      });
+    }
+    
+    const sheetUrl = process.env.GOOGLE_SHEET_WEBAPP_URL;
+
+    if (!sheetUrl) {
+      return res.status(500).json({
+        success: false,
+        error: "Google Sheet URL is not configured.",
+      });
+    }
+
+    const sheetPayload = {
+      action : "updateBooking",
+      id,
+      status
+    }
+
+    const sheetResponse = await axios.post(
+      sheetUrl, 
+      sheetPayload, 
+      {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!sheetResponse.data?.success) {
+      throw new Error(
+        sheetResponse.data?.error || "Google Sheets rejected update"
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking status updated successfully.",
+    });
+
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, error: `Failed to update booking status. Error: ${error.message }`
+    }
+    );
+  }
+}
+)
+
+// DELETE BOOKING ROUTE (Delete the booking from Google Sheets)
+app.delete('/api/bookings/', async (req, res) => {
+  try {
+    const {id} = req.body
+
+    if (!id || !status) {
+      return res.status(400).json({
+        success: false,
+        error: "Booking ID is required.",
+      });
+    }
+
+    const sheetUrl = process.env.GOOGLE_SHEET_WEBAPP_URL;
+
+    if (!sheetUrl) {
+      return res.status(500).json({
+        success: false,
+        error: "Google Sheet URL is not configured.",
+      });
+    }
+
+    const sheetPayload = {
+      action : "deleteBooking",
+      id
+    }
+
+    const sheetResponse = await axios.post(
+      sheetUrl, 
+      sheetPayload, 
+      {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!sheetResponse.data?.success) {
+      throw new Error(
+        sheetResponse.data?.error || "Google Sheets rejected delete"
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking deleted successfully.",
+    });
+
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, error: `Failed to delete booking [id: ${id}]. Error: ${error.message }`
+    }
+    );
+  }
+}
+)
+
 // 📁 EXPORT BOOKINGS ROUTE (Brings data for export from Google Sheets)
 app.get('/api/bookings/export', async (req, res) => {
   try {
