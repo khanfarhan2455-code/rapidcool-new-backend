@@ -311,12 +311,11 @@ app.get('/api/bookings/export', async (req, res) => {
     
     const headers = Object.keys(bookings[0]).join(',');
 
-    // 2. Extract rows
-    const rows = bookings.map(obj => 
+    const csv_rows = bookings.map(obj => 
       Object.values(obj).map(val => `"${val}"`).join(',')
     );
 
-    const csvString = [headers, ...rows].join('\n');
+    const csvString = [headers, ...csv_rows].join('\n');
 
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
 
