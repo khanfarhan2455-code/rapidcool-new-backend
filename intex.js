@@ -317,22 +317,13 @@ app.get('/api/bookings/export', async (req, res) => {
 
     const csvString = [headers, ...csv_rows].join('\n');
 
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
 
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'rapidcool_bookings.csv';
-    link.style.display = 'none';
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="rapidcool_bookings.csv"');
 
-    document.body.appendChild(link);
-    link.click();
-
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-    res.status(200).json({ 
-      success: true, 
-      bookings: response.data || [] 
-    });
+    res.status(200).send(
+      csvString
+    );
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
