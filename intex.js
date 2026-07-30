@@ -271,9 +271,65 @@ app.get('/api/bookings/export', async (req, res) => {
     if (!sheetUrl) {
       return res.status(500).json({ success: false, error: "Google Sheet URL not configured." });
     }
-
-    const response = await axios.get(sheetUrl);
     
+    const response = await axios.get(sheetUrl);
+
+    const rows = Array.isArray(response.data?.data)
+      ? response.data.data
+      : [];
+
+    const dataRows = rows.filter((row) => {
+      if (!Array.isArray(row)) return false;
+
+      const firstCell = String(row[0] || "").trim().toLowerCase();
+
+      return (
+        firstCell !== "id" &&
+        firstCell !== "booking id" &&
+        row.some((cell) => String(cell || "").trim() !== "")
+      );
+    });
+
+    const bookings = dataRows.map((row) => ({
+      id: String(row[0] || ""),
+      date: String(row[1] || ""),
+      time: String(row[2] || ""),
+      customerName: String(row[3] || ""),
+      mobileNumber: String(row[4] || "").replace(/^'/, ""),
+      customerEmail: String(row[5] || ""),
+      applianceType: String(row[6] || ""),
+      serviceRequired: String(row[7] || ""),
+      area: String(row[8] || ""),
+      address: String(row[9] || ""),
+      preferredDate: String(row[10] || ""),
+      status: String(row[11] || "New"),
+      visitingFee: 299,
+      express: false,
+      warranty: false,
+      additionalNotes: "",
+    }));
+    
+    const headers = Object.keys(bookings[0]).join(',');
+
+    // 2. Extract rows
+    const rows = bookings.map(obj => 
+      Object.values(obj).map(val => `"${val}"`).join(',')
+    );
+
+    const csvString = [headers, ...rows].join('\n');
+
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'rapidcool_bookings.csv';
+    link.style.display = 'none';
+
+    document.body.appendChild(link);
+    link.click();
+
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
     res.status(200).json({ 
       success: true, 
       bookings: response.data || [] 
