@@ -318,11 +318,33 @@ app.get('/api/bookings/export', async (req, res) => {
     const csvString = [headers, ...csv_rows].join('\n');
 
 
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="rapidcool_bookings.csv"');
+    res.setHeader('Content-Type', 'text/html');
+  res.status(200).send(`
+    <!DOCTYPE html>
+    <html>
+    <head><title>Downloading...</title></head>
+    <body>
+      <script>
+        // Create the CSV file download
+        const csvData = \`${csvString}\`;
+        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'rapidcool_bookings.csv';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
 
-    res.status(200).send(
-      csvString
+        // Instantly close the tab after execution
+        setTimeout(() => {
+          window.close();
+        }, 100);
+      </script>
+    </body>
+    </html>
+    `
     );
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
